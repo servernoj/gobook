@@ -3,9 +3,30 @@ package url_test
 import (
 	"fmt"
 	"log"
+	"testing"
 
 	"github.com/servernoj/gobook/url"
 )
+
+func TestURLHostname(t *testing.T) {
+	tests := map[string]struct {
+		input    *url.URL
+		expected string
+	}{
+		"nil struct":   {nil, ""},
+		"empty struct": {&url.URL{}, ""},
+	}
+	for name, tt := range tests {
+		t.Run(
+			name,
+			func(t *testing.T) {
+				if got, want := tt.input.Port(), tt.expected; got != want {
+					t.Fatalf("%#v.Hostname(), got = %q, want = %q\n", *tt.input, got, want)
+				}
+			},
+		)
+	}
+}
 
 func ExampleURL() {
 	u, err := url.Parse("http://google.com:80/?q=hello")

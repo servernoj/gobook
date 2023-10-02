@@ -41,6 +41,9 @@ func Parse(rawURL string) (*URL, error) {
 
 // Port is getter of `Port` value out of `Host` field formatted as Hostname:Port
 func (url *URL) Port() string {
+	if url == nil {
+		return ""
+	}
 	parts := regexp.MustCompile(`\s*:\s*`).Split(url.Host, -1)
 	port := ""
 	if len(parts) > 1 {
@@ -51,6 +54,9 @@ func (url *URL) Port() string {
 
 // Hostname is getter of `Hostname` value out of `Host` field formatted as Hostname:Port
 func (url *URL) Hostname() string {
+	if url == nil {
+		return ""
+	}
 	parts := regexp.MustCompile(`\s*:\s*`).Split(url.Host, -1)
 	hostname := parts[0]
 	if len(parts) > 1 {
@@ -64,5 +70,14 @@ func (url *URL) Hostname() string {
 
 // String makes URL struct implementing the Stringer interface
 func (url *URL) String() string {
-	return fmt.Sprintf("%s://%s%s", url.Scheme, url.Host, url.Path)
+	// return fmt.Sprintf("%s://%s%s", url.Scheme, url.Host, url.Path)
+	if url == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(url.Scheme)
+	b.WriteString("://")
+	b.WriteString(url.Host)
+	b.WriteString(url.Path)
+	return b.String()
 }

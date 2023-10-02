@@ -85,3 +85,19 @@ func TestURLPort(t *testing.T) {
 		)
 	}
 }
+
+var tempGlobal string
+
+func BenchmarkURLString(b *testing.B) {
+	url := &URL{
+		Scheme: "https",
+		Host:   "google.com",
+		Path:   "/?q=hello",
+	}
+	var tempLocal string
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tempLocal = url.String()
+	}
+	tempGlobal = tempLocal
+}
