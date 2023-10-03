@@ -10,6 +10,11 @@ import (
 	"github.com/servernoj/gobook/url"
 )
 
+const usageText = `
+Usage:
+  %s [options] URL
+Options:%s`
+
 type flags struct {
 	c   int
 	n   int
@@ -17,16 +22,22 @@ type flags struct {
 }
 
 func (f *flags) parse() error {
-	flag.StringVar(&f.url, "url", "", "`URL` of the server to hit (required)")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, usageText, os.Args[0], "\n")
+		flag.PrintDefaults()
+	}
 	flag.Var(toNumber(&f.c), "c", "level of concurrency")
 	flag.Var(toNumber(&f.n), "n", "total number of requests")
 	flag.Parse()
-	err := f.validate()
-	if err != nil {
+	f.url = flag.Arg(0)
+
+	if err := f.validate(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		flag.Usage()
+		return err
 	}
-	return err
+	return nil
 }
 
 func validateUrl(rawurl string) error {
@@ -54,7 +65,7 @@ func validateUrl(rawurl string) error {
 func (f *flags) validate() error {
 
 	if urlErr := validateUrl(f.url); urlErr != nil {
-		return fmt.Errorf("invalid value %q for flag -url: %w", f.url, urlErr)
+		return fmt.Errorf("invalid value %q of URL: %w", f.url, urlErr)
 	}
 	if f.c > f.n {
 		return errors.New("value of `c` must not be greater than value of `n`")
