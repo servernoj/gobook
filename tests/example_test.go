@@ -1,11 +1,11 @@
-package url_test
+package tests
 
 import (
 	"fmt"
 	"log"
 	"testing"
 
-	"github.com/servernoj/gobook/url"
+	"url"
 )
 
 func TestURLHostname(t *testing.T) {
