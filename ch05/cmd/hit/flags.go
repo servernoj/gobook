@@ -13,7 +13,8 @@ import (
 const usageText = `
 Usage:
   %s [options] URL
-Options:%s`
+Options:
+`
 
 type flags struct {
 	c   int
@@ -21,20 +22,23 @@ type flags struct {
 	url string
 }
 
-func (f *flags) parse() error {
+func (f *flags) parse(args []string, flagSet *flag.FlagSet) error {
 
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, usageText, os.Args[0], "\n")
-		flag.PrintDefaults()
+	flagSet.Usage = func() {
+		fmt.Fprintf(flagSet.Output(), usageText, os.Args[0])
+		flagSet.PrintDefaults()
 	}
-	flag.Var(toNumber(&f.c), "c", "level of concurrency")
-	flag.Var(toNumber(&f.n), "n", "total number of requests")
-	flag.Parse()
-	f.url = flag.Arg(0)
 
+	flagSet.Var(toNumber(&f.c), "c", "level of concurrency")
+	flagSet.Var(toNumber(&f.n), "n", "total number of requests")
+
+	if err := flagSet.Parse(args); err != nil {
+		return err
+	}
+	f.url = flagSet.Arg(0)
 	if err := f.validate(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		flag.Usage()
+		fmt.Fprintln(flagSet.Output(), err)
+		flagSet.Usage()
 		return err
 	}
 	return nil
