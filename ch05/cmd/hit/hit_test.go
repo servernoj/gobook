@@ -28,11 +28,11 @@ func TestRunHappy(t *testing.T) {
 	}{
 		"url_only": {
 			args: "http://google.com",
-			out:  fmt.Sprintf("&{c:%d n:100 url:http://google.com}", runtime.NumCPU()),
+			out:  fmt.Sprintf("c:%d n:100 url:http://google.com", runtime.NumCPU()),
 		},
 		"url+c+n": {
 			args: "-c 5 -n 20 http://google.com",
-			out:  "&{c:5 n:20 url:http://google.com}",
+			out:  "c:5 n:20 url:http://google.com",
 		},
 	}
 	for name, tt := range tests {
@@ -78,7 +78,8 @@ func TestRunSad(t *testing.T) {
 			if err == nil {
 				t.Fatal("error not reported")
 			}
-			if got, want := err.Error(), tt.err; !strings.Contains(got, want) {
+			got, want := te.err.String(), tt.err
+			if !strings.Contains(got, want) {
 				t.Fatalf("Want %q to be part of %q\n", want, got)
 			}
 		})

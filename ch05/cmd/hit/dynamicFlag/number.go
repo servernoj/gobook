@@ -1,4 +1,4 @@
-package main
+package dynamicFlag
 
 import (
 	"errors"
@@ -6,13 +6,9 @@ import (
 	"strconv"
 )
 
-type number int
+type Number int
 
-func toNumber(value *int) *number {
-	return (*number)(value)
-}
-
-func (n *number) Set(s string) error {
+func (n *Number) Set(s string) error {
 	value, err := strconv.ParseInt(s, 0, 0)
 	if err != nil {
 		return errors.New("parse error")
@@ -20,10 +16,10 @@ func (n *number) Set(s string) error {
 	if value <= 0 {
 		return fmt.Errorf("must be positive")
 	}
-	*n = number(value)
+	*n = Number(value)
 	return nil
 }
 
-func (n *number) String() string {
+func (n *Number) String() string {
 	return strconv.Itoa(int(*n))
 }
