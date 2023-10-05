@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
-	// vendor packages
-	"dynamicFlag"
-	"url"
+	"github.com/servernoj/gobook/ch04/url"
+	"github.com/servernoj/gobook/ch05/dynamicFlag"
 )
 
 const usageText = `
