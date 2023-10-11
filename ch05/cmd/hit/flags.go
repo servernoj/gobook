@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/servernoj/gobook/ch04/url"
 	"github.com/servernoj/gobook/ch05/dynamicFlag"
@@ -22,9 +21,9 @@ type flags struct {
 	c   int
 	n   int
 	url string
-	t   time.Duration
 	m   string
 	H   []string
+	rps int
 }
 
 func (f *flags) parse(args []string, flagSet *flag.FlagSet) error {
@@ -35,8 +34,8 @@ func (f *flags) parse(args []string, flagSet *flag.FlagSet) error {
 	}
 
 	flagSet.Var((*dynamicFlag.Number)(&f.c), "c", "level of concurrency")
+	flagSet.Var((*dynamicFlag.Number)(&f.rps), "t", "make up to requests per second")
 	flagSet.Var((*dynamicFlag.Number)(&f.n), "n", "total number of requests")
-	flagSet.DurationVar(&f.t, "t", f.t, "timeout for request")
 	flagSet.Var((*dynamicFlag.Method)(&f.m), "m", "HTTP request method")
 	flagSet.Var((*dynamicFlag.Header)(&f.H), "H", "request header")
 
@@ -62,7 +61,7 @@ func validateUrl(rawurl string) error {
 		{
 			return errors.New("parse error")
 		}
-	case url.Scheme != "http":
+	case url.Scheme != "http" && url.Scheme != "https":
 		{
 			return errors.New("invalid scheme (must be 'http')")
 		}
