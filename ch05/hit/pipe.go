@@ -20,15 +20,16 @@ type Client struct {
 }
 
 func (c *Client) getSender() SenderFunc {
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			MaxIdleConnsPerHost: c.Concurrency,
-		},
+	if c.httpClient == nil {
+		c.httpClient = &http.Client{
+			Transport: &http.Transport{
+				MaxIdleConnsPerHost: c.Concurrency,
+			},
+		}
 	}
-	c.httpClient = httpClient
 	return func(r *http.Request) (result *Result) {
 		start := time.Now()
-		response, err := httpClient.Do(r)
+		response, err := c.httpClient.Do(r)
 		result = &Result{
 			Duration: time.Since(start),
 		}

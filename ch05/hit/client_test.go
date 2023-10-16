@@ -20,25 +20,22 @@ func TestClientDo(t *testing.T) {
 		),
 	)
 	defer server.Close()
-	// request template
-	requestTemplate, err := http.NewRequest(http.MethodGet, server.URL, http.NoBody)
-	if err != nil {
-		t.Fatalf("unable to create request template")
-	}
-	// client instantiation
-	client := &Client{
-		RequestTemplate:  requestTemplate,
-		Concurrency:      2,
-		NumberOfRequests: 9,
-	}
 	// client Do the job
-	stat := client.Do(context.Background())
+	numberOfRequests := 100
+	stat, err := Do(
+		context.Background(), server.URL, numberOfRequests,
+		WithConcurrency(1),
+		WithRPS(10),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("\n%s\n", stat)
 	// assess the results
-	if got, wanted := stat.Count, client.NumberOfRequests; got != wanted {
+	if got, wanted := stat.Count, numberOfRequests; got != wanted {
 		t.Errorf("numbers of planned/sent requests don't match")
 	}
-	if got, wanted := requestCounter.Load(), int64(client.NumberOfRequests); got != wanted {
+	if got, wanted := requestCounter.Load(), int64(numberOfRequests); got != wanted {
 		t.Errorf("numbers of sent/received requests don't match")
 	}
 	if got, wanted := stat.Errors, 0; got != wanted {

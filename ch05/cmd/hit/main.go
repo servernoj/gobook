@@ -28,16 +28,6 @@ func run(args []string, out io.Writer, flagSet *flag.FlagSet) error {
 		return err
 	}
 
-	requestTemplate, err := http.NewRequest(f.m, f.url, http.NoBody)
-	if err != nil {
-		return err
-	}
-	client := hit.Client{
-		RequestTemplate:  requestTemplate,
-		NumberOfRequests: f.n,
-		Concurrency:      f.c,
-		RPS:              f.rps,
-	}
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
 		f.timeout,
@@ -46,7 +36,15 @@ func run(args []string, out io.Writer, flagSet *flag.FlagSet) error {
 	defer cancel()
 	defer stop()
 
-	stat := client.Do(ctx)
+	stat, err := hit.Do(
+		ctx, f.url, f.n,
+		hit.WithRPS(f.rps),
+		hit.WithConcurrency(f.c),
+		hit.WithClient(&http.Client{}),
+	)
+	if err != nil {
+		return err
+	}
 	fmt.Println(stat)
 
 	contextError := ctx.Err()
