@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/servernoj/gobook/ch04/url"
 	"github.com/servernoj/gobook/ch05/dynamicFlag"
@@ -18,12 +19,13 @@ Options:
 `
 
 type flags struct {
-	c   int
-	n   int
-	url string
-	m   string
-	H   []string
-	rps int
+	c       int
+	n       int
+	url     string
+	m       string
+	H       []string
+	rps     int
+	timeout time.Duration
 }
 
 func (f *flags) parse(args []string, flagSet *flag.FlagSet) error {
@@ -34,10 +36,11 @@ func (f *flags) parse(args []string, flagSet *flag.FlagSet) error {
 	}
 
 	flagSet.Var((*dynamicFlag.Number)(&f.c), "c", "level of concurrency")
-	flagSet.Var((*dynamicFlag.Number)(&f.rps), "t", "make up to requests per second")
+	flagSet.Var((*dynamicFlag.Number)(&f.rps), "r", "make up to requests per second")
 	flagSet.Var((*dynamicFlag.Number)(&f.n), "n", "total number of requests")
 	flagSet.Var((*dynamicFlag.Method)(&f.m), "m", "HTTP request method")
 	flagSet.Var((*dynamicFlag.Header)(&f.H), "H", "request header")
+	flagSet.DurationVar(&f.timeout, "t", f.timeout, "time allowance for all requests")
 
 	if err := flagSet.Parse(args); err != nil {
 		return err

@@ -16,17 +16,51 @@ type Client struct {
 	RPS              int
 	Concurrency      int
 	NumberOfRequests int
+	httpClient       *http.Client
 }
 
-func (c *Client) Do() *Stat {
-	stat := &Stat{}
-	from := time.Now()
-
-	p := Produce(
-		c.NumberOfRequests,
-		func() *http.Request {
-			return c.RequestTemplate.Clone(context.TODO())
+func (c *Client) getSender() SenderFunc {
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: c.Concurrency,
 		},
+	}
+	c.httpClient = httpClient
+	return func(r *http.Request) (result *Result) {
+		start := time.Now()
+		response, err := httpClient.Do(r)
+		result = &Result{
+			Duration: time.Since(start),
+		}
+		if err != nil {
+			result.Err = fmt.Errorf("unable to make http request: %w", err)
+			return nil
+		}
+		if response.StatusCode >= http.StatusBadRequest {
+			result.Err = fmt.Errorf("http error (%d)", response.StatusCode)
+			return nil
+		}
+		body := response.Body
+		defer body.Close()
+		buf, err := io.ReadAll(body)
+		if err != nil {
+			result.Err = fmt.Errorf("unable to parse response data: %w", err)
+			return nil
+		}
+		result.Bytes = len(buf)
+		return
+	}
+}
+
+func (c *Client) Do(ctx context.Context) *Stat {
+	stat := &Stat{}
+	sender := c.getSender()
+	defer c.httpClient.CloseIdleConnections()
+	from := time.Now()
+	p := Produce(
+		ctx,
+		c.NumberOfRequests,
+		c.RequestTemplate,
 	)
 	if c.RPS > 0 {
 		p = Throttle(
@@ -37,7 +71,7 @@ func (c *Client) Do() *Stat {
 	r := SplitAndSend(
 		p,
 		c.Concurrency,
-		Send,
+		sender,
 	)
 	for result := range r {
 		stat.Process(result)
@@ -45,32 +79,6 @@ func (c *Client) Do() *Stat {
 
 	stat.PostProcess(time.Since(from))
 	return stat
-}
-
-func Send(r *http.Request) (result *Result) {
-	client := http.Client{}
-	start := time.Now()
-	response, err := client.Do(r)
-	result = &Result{
-		Duration: time.Since(start),
-	}
-	if err != nil {
-		result.Err = fmt.Errorf("unable to make http request: %w", err)
-		return
-	}
-	if response.StatusCode >= http.StatusBadRequest {
-		result.Err = fmt.Errorf("http error (%d)", response.StatusCode)
-		return
-	}
-	body := response.Body
-	defer body.Close()
-	buf, err := io.ReadAll(body)
-	if err != nil {
-		result.Err = fmt.Errorf("unable to parse response data: %w", err)
-		return
-	}
-	result.Bytes = len(buf)
-	return
 }
 
 func FakeSend(r *http.Request) *Result {
@@ -84,15 +92,18 @@ func FakeSend(r *http.Request) *Result {
 	return result
 }
 
-func Produce(n int, fn func() *http.Request) chan *http.Request {
+func Produce(ctx context.Context, n int, requestTemplate *http.Request) chan *http.Request {
 	out := make(chan *http.Request)
 
 	go func() {
+		defer close(out)
 		for i := 0; i < n; i++ {
-			r := fn()
-			out <- r
+			select {
+			case <-ctx.Done():
+				return
+			case out <- requestTemplate.Clone(ctx):
+			}
 		}
-		close(out)
 	}()
 
 	return out
