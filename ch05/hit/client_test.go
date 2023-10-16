@@ -33,11 +33,15 @@ func TestClientDo(t *testing.T) {
 	}
 	// client Do the job
 	stat := client.Do(context.Background())
+	t.Logf("\n%s\n", stat)
 	// assess the results
 	if got, wanted := stat.Count, client.NumberOfRequests; got != wanted {
-		t.Fatalf("numbers of planned/sent requests don't match")
+		t.Errorf("numbers of planned/sent requests don't match")
 	}
 	if got, wanted := requestCounter.Load(), int64(client.NumberOfRequests); got != wanted {
-		t.Fatalf("numbers of sent/received requests don't match")
+		t.Errorf("numbers of sent/received requests don't match")
+	}
+	if got, wanted := stat.Errors, 0; got != wanted {
+		t.Errorf("no http errors were expected")
 	}
 }
