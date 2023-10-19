@@ -3,6 +3,7 @@ package shortener
 import (
 	"encoding/json"
 	"io"
+	"net/http"
 )
 
 func Decode(r io.Reader, v any) error {
@@ -11,7 +12,9 @@ func Decode(r io.Reader, v any) error {
 	return decoder.Decode(v)
 }
 
-func Encode(w io.Writer, v any) error {
+func EncodeAndSend(w http.ResponseWriter, code int, v any) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(v)

@@ -25,17 +25,17 @@ func Logger(h http.Handler) http.Handler {
 
 type HandlerToError func(w http.ResponseWriter, r *http.Request) *AppError
 
-func HandlerWrapper(h HandlerToError) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			err := h(w, r)
-			if err != nil {
-				Log(r.Context(), "%s %s %s %s (%d)\n", r.Method, r.URL.Path, r.RemoteAddr, err.Error, err.Code)
-				if err.Code == http.StatusInternalServerError {
-					err.Error = errors.New("internal server error")
-				}
-				http.Error(w, err.Error.Error(), err.Code)
+func HandlerWrapper(h HandlerToError) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := h(w, r)
+		if err != nil {
+			Log(r.Context(), "%s %s %s %s (%d)\n", r.Method, r.URL.Path, r.RemoteAddr, err.Error, err.Code)
+			if err.Code == http.StatusInternalServerError {
+				err.Error = errors.New("internal server error")
 			}
-		},
-	)
+			EncodeAndSend(w, err.Code, map[string]string{
+				"message": err.Error.Error(),
+			})
+		}
+	}
 }

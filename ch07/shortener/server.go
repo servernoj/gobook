@@ -1,7 +1,6 @@
 package shortener
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -41,20 +40,20 @@ func handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
 	link.URL = strings.TrimSpace(link.URL)
 	if len(link.Key) == 0 {
 		return &AppError{
-			fmt.Errorf("request body field 'key' can't be an empty string"),
+			fmt.Errorf("request body field 'key' cannot be an empty string"),
 			http.StatusBadRequest,
 		}
 	}
 	if len(link.URL) == 0 {
 		return &AppError{
-			fmt.Errorf("request body field 'URL' can't be an empty string"),
+			fmt.Errorf("request body field 'url' cannot be an empty string"),
 			http.StatusBadRequest,
 		}
 	}
 	u, err := url.Parse(link.URL)
 	if err != nil {
 		return &AppError{
-			fmt.Errorf("unable to parse URL field %q: %w", link.URL, err),
+			fmt.Errorf("unable to parse URL %q: %w", link.URL, err),
 			http.StatusBadRequest,
 		}
 	}
@@ -64,12 +63,8 @@ func handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
 			http.StatusBadRequest,
 		}
 	}
-	// -- store data
 	short.Set(&link)
-	// -- echo requestv data
-
-	w.Header().Add("content-type", "application/json")
-	Encode(w, &link)
+	EncodeAndSend(w, http.StatusOK, &link)
 	return nil
 }
 
@@ -94,7 +89,6 @@ func handlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
 
 type Server struct {
 	http.Handler
-	ctx context.Context
 }
 
 func (s *Server) Init() {
@@ -104,5 +98,4 @@ func (s *Server) Init() {
 	serveMux.Handle("/short", HandlerWrapper(handlerCreate))
 	serveMux.Handle("/r/", HandlerWrapper(handlerResolve))
 	s.Handler = serveMux
-	s.ctx = context.Background()
 }
