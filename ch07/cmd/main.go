@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -20,14 +21,17 @@ func main() {
 	}
 	flag.StringVar(&f.addr, "a", f.addr, "network address to listen")
 	flag.Parse()
-	fmt.Printf("starting the server on %s\n", f.addr)
+
+	logger := log.New(os.Stderr, "shortener: ", log.LstdFlags|log.Lmsgprefix)
+	logger.Printf("starting the server on %s\n", f.addr)
 
 	appServer := shortener.Server{}
 	appServer.Init()
 
 	httpServer := http.Server{
-		Addr:    f.addr,
-		Handler: appServer,
+		Addr:     f.addr,
+		Handler:  appServer,
+		ErrorLog: logger,
 	}
 	defer httpServer.Close()
 	if os.Getenv("USE_LOGGER") == "1" {

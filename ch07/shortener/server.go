@@ -10,38 +10,59 @@ import (
 	"github.com/servernoj/gobook/ch07/short"
 )
 
-func handlerHealth(w http.ResponseWriter, r *http.Request) error {
+func handlerHealth(w http.ResponseWriter, r *http.Request) *AppError {
 	w.Write([]byte("OK"))
 	return nil
 }
 
-func handlerError(w http.ResponseWriter, r *http.Request) error {
-	return ErrTest
+func handlerError(w http.ResponseWriter, r *http.Request) *AppError {
+	return &AppError{
+		fmt.Errorf("test error"),
+		http.StatusInternalServerError,
+	}
 }
 
-func handlerCreate(w http.ResponseWriter, r *http.Request) error {
+func handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
 	if r.Method != "POST" {
-		return ErrInvalidMethod
+		return &AppError{
+			fmt.Errorf("method %q not allowed", r.Method),
+			http.StatusMethodNotAllowed,
+		}
 	}
 	var link short.Link
 	err := Decode(r.Body, &link)
 	if err != nil {
-		return fmt.Errorf("%w: %s", ErrBadRequest, err)
+		return &AppError{
+			fmt.Errorf("unable to decode request body: %w", err),
+			http.StatusBadRequest,
+		}
 	}
 	link.Key = strings.TrimSpace(link.Key)
 	link.URL = strings.TrimSpace(link.URL)
 	if len(link.Key) == 0 {
-		return fmt.Errorf("%w: Key can't be an empty string", ErrBadRequest)
+		return &AppError{
+			fmt.Errorf("request body field 'key' can't be an empty string"),
+			http.StatusBadRequest,
+		}
 	}
 	if len(link.URL) == 0 {
-		return fmt.Errorf("%w: URL can't be an empty string", ErrBadRequest)
+		return &AppError{
+			fmt.Errorf("request body field 'URL' can't be an empty string"),
+			http.StatusBadRequest,
+		}
 	}
 	u, err := url.Parse(link.URL)
 	if err != nil {
-		return fmt.Errorf("%w: unable to parse URL %q", ErrBadRequest, link.URL)
+		return &AppError{
+			fmt.Errorf("unable to parse URL field %q: %w", link.URL, err),
+			http.StatusBadRequest,
+		}
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return fmt.Errorf("%w: invalid URL scheme %q", ErrBadRequest, u.Scheme)
+		return &AppError{
+			fmt.Errorf("invalid URL scheme %q, must be 'http[s]'", u.Scheme),
+			http.StatusBadRequest,
+		}
 	}
 	// -- store data
 	short.Set(&link)
@@ -52,14 +73,20 @@ func handlerCreate(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func handlerResolve(w http.ResponseWriter, r *http.Request) error {
+func handlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
 	if r.Method != "GET" {
-		return ErrInvalidMethod
+		return &AppError{
+			fmt.Errorf("method %q not allowed", r.Method),
+			http.StatusMethodNotAllowed,
+		}
 	}
 	key := r.URL.Path[3:]
 	link := short.Get(key)
 	if link == nil {
-		return ErrNotFound
+		return &AppError{
+			fmt.Errorf("key %q not found", key),
+			http.StatusNotFound,
+		}
 	}
 	http.Redirect(w, r, link.URL, http.StatusFound)
 	return nil
