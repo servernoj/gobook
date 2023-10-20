@@ -22,12 +22,6 @@ func handlerError(w http.ResponseWriter, r *http.Request) *AppError {
 }
 
 func handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
-	if r.Method != "POST" {
-		return &AppError{
-			fmt.Errorf("method %q not allowed", r.Method),
-			http.StatusMethodNotAllowed,
-		}
-	}
 	var link short.Link
 	err := Decode(r.Body, &link)
 	if err != nil {
@@ -69,12 +63,6 @@ func handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
 }
 
 func handlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
-	if r.Method != "GET" {
-		return &AppError{
-			fmt.Errorf("method %q not allowed", r.Method),
-			http.StatusMethodNotAllowed,
-		}
-	}
 	key := r.URL.Path[3:]
 	link := short.Get(key)
 	if link == nil {
@@ -95,7 +83,19 @@ func (s *Server) Init() {
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/health", HandlerWrapper(handlerHealth))
 	serveMux.Handle("/error", HandlerWrapper(handlerError))
-	serveMux.Handle("/short", HandlerWrapper(handlerCreate))
-	serveMux.Handle("/r/", HandlerWrapper(handlerResolve))
+	serveMux.Handle(
+		"/short",
+		MiddleWareAllowMethod(
+			HandlerWrapper(handlerCreate),
+			http.MethodPost,
+		),
+	)
+	serveMux.Handle(
+		"/r/",
+		MiddleWareAllowMethod(
+			HandlerWrapper(handlerResolve),
+			http.MethodGet,
+		),
+	)
 	s.Handler = serveMux
 }

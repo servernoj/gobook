@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -37,5 +38,16 @@ func HandlerWrapper(h HandlerToError) http.HandlerFunc {
 				"message": err.Error.Error(),
 			})
 		}
+	}
+}
+
+func MiddleWareAllowMethod(h http.Handler, allowedMethod string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !strings.EqualFold(allowedMethod, r.Method) {
+			Log(r.Context(), "%s %s %s method not allowed", r.Method, r.URL.Path, r.RemoteAddr)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h.ServeHTTP(w, r)
 	}
 }
