@@ -22,13 +22,15 @@ func TestServerHandlers(t *testing.T) {
 		headers http.Header
 	}
 
+	server := &Server{}
+
 	tests := map[string]struct {
 		in  inData
 		out outData
 	}{
 		"health endpoint": {
 			in: inData{
-				handler: HandlerWrapper(nil, handlerHealth),
+				handler: HandlerWrapper(server.handlerHealth),
 				body:    "",
 				path:    "/health",
 				method:  http.MethodGet,
@@ -43,7 +45,7 @@ func TestServerHandlers(t *testing.T) {
 		},
 		"error endpoint": {
 			in: inData{
-				handler: HandlerWrapper(nil, handlerError),
+				handler: HandlerWrapper(server.handlerError),
 				body:    "",
 				path:    "/error",
 				method:  http.MethodGet,
