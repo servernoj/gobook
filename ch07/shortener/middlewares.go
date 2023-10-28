@@ -2,7 +2,6 @@ package shortener
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -22,23 +21,6 @@ func Logger(h http.Handler) http.Handler {
 			Log(r.Context(), "%s %s %s %s\n", r.Method, r.URL.Path, r.RemoteAddr, time.Since(start))
 		},
 	)
-}
-
-type HandlerToError func(w http.ResponseWriter, r *http.Request) *AppError
-
-func HandlerWrapper(h HandlerToError) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		err := h(w, r)
-		if err != nil {
-			Log(r.Context(), "%s %s %s %s (%d)\n", r.Method, r.URL.Path, r.RemoteAddr, err.Error, err.Code)
-			if err.Code == http.StatusInternalServerError {
-				err.Error = errors.New("internal server error")
-			}
-			EncodeAndSend(w, err.Code, map[string]string{
-				"message": err.Error.Error(),
-			})
-		}
-	}
 }
 
 func MiddleWareAllowMethod(h http.Handler, allowedMethod string) http.HandlerFunc {

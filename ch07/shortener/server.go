@@ -1,6 +1,7 @@
 package shortener
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,19 +10,24 @@ import (
 	"github.com/servernoj/gobook/ch07/short"
 )
 
-func handlerHealth(w http.ResponseWriter, r *http.Request) *AppError {
+type Server struct {
+	http.Handler
+	service *short.Service
+}
+
+func (s *Server) handlerHealth(w http.ResponseWriter, r *http.Request) *AppError {
 	w.Write([]byte("OK"))
 	return nil
 }
 
-func handlerError(w http.ResponseWriter, r *http.Request) *AppError {
+func (s *Server) handlerError(w http.ResponseWriter, r *http.Request) *AppError {
 	return &AppError{
 		fmt.Errorf("test error"),
 		http.StatusInternalServerError,
 	}
 }
 
-func handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
+func (s *Server) handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
 	var link short.Link
 	err := Decode(r.Body, &link)
 	if err != nil {
@@ -57,14 +63,25 @@ func handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
 			http.StatusBadRequest,
 		}
 	}
-	short.Set(&link)
-	EncodeAndSend(w, http.StatusOK, &link)
+	if err := s.service.Create(r.Context(), link); err != nil {
+		return &AppError{
+			err,
+			http.StatusInternalServerError,
+		}
+	}
+	EncodeAndSend(w, http.StatusCreated, link)
 	return nil
 }
 
-func handlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
+func (s *Server) handlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
 	key := r.URL.Path[3:]
-	link := short.Get(key)
+	link, err := s.service.Retrieve(r.Context(), key)
+	if err != nil {
+		return &AppError{
+			fmt.Errorf("unable to retrieve link record with key %q", key),
+			http.StatusInternalServerError,
+		}
+	}
 	if link == nil {
 		return &AppError{
 			fmt.Errorf("key %q not found", key),
@@ -75,27 +92,45 @@ func handlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
 	return nil
 }
 
-type Server struct {
-	http.Handler
-}
-
-func (s *Server) Init() {
+func (s *Server) Init(service *short.Service) {
+	s.service = service
 	serveMux := http.NewServeMux()
-	serveMux.Handle("/health", HandlerWrapper(handlerHealth))
-	serveMux.Handle("/error", HandlerWrapper(handlerError))
+	serveMux.Handle("/health", HandlerWrapper(s.handlerHealth))
+	serveMux.Handle("/error", HandlerWrapper(s.handlerError))
 	serveMux.Handle(
 		"/short",
 		MiddleWareAllowMethod(
-			HandlerWrapper(handlerCreate),
+			HandlerWrapper(s.handlerCreate),
 			http.MethodPost,
 		),
 	)
 	serveMux.Handle(
 		"/r/",
 		MiddleWareAllowMethod(
-			HandlerWrapper(handlerResolve),
+			HandlerWrapper(s.handlerResolve),
 			http.MethodGet,
 		),
 	)
 	s.Handler = serveMux
+}
+
+type HandlerToError func(w http.ResponseWriter, r *http.Request) *AppError
+
+type contextKey string
+
+const ServiceKey = contextKey("Service")
+
+func HandlerWrapper(h HandlerToError) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := h(w, r)
+		if err != nil {
+			Log(r.Context(), "%s %s %s %s (%d)\n", r.Method, r.URL.Path, r.RemoteAddr, err.Error, err.Code)
+			if err.Code == http.StatusInternalServerError {
+				err.Error = errors.New("internal server error")
+			}
+			EncodeAndSend(w, err.Code, map[string]string{
+				"message": err.Error.Error(),
+			})
+		}
+	}
 }

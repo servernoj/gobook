@@ -28,7 +28,7 @@ func TestServerHandlers(t *testing.T) {
 	}{
 		"health endpoint": {
 			in: inData{
-				handler: HandlerWrapper(handlerHealth),
+				handler: HandlerWrapper(nil, handlerHealth),
 				body:    "",
 				path:    "/health",
 				method:  http.MethodGet,
@@ -43,7 +43,7 @@ func TestServerHandlers(t *testing.T) {
 		},
 		"error endpoint": {
 			in: inData{
-				handler: HandlerWrapper(handlerError),
+				handler: HandlerWrapper(nil, handlerError),
 				body:    "",
 				path:    "/error",
 				method:  http.MethodGet,

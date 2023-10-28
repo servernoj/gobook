@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/servernoj/gobook/ch07/short"
 	"github.com/servernoj/gobook/ch07/shortener"
+	"github.com/servernoj/gobook/ch07/sqlx"
 )
 
 type flags struct {
@@ -25,8 +27,15 @@ func main() {
 	logger := log.New(os.Stderr, "shortener: ", log.LstdFlags|log.Lmsgprefix)
 	logger.Printf("starting the server on %s\n", f.addr)
 
+	db, err := sqlx.Dial()
+	if err != nil {
+		log.Fatalf("unable to dial DB: %s", err)
+	}
+
+	service := short.NewService(db)
+
 	appServer := shortener.Server{}
-	appServer.Init()
+	appServer.Init(service)
 
 	httpServer := http.Server{
 		Addr:     f.addr,
