@@ -1,19 +1,43 @@
 package shortener
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/servernoj/gobook/ch07/short"
 )
+
+type fakeLinkStore struct {
+	create   func(context.Context, short.Link) error
+	retrieve func(context.Context, string) (*short.Link, error)
+}
+
+func (fls *fakeLinkStore) Create(ctx context.Context, link short.Link) error {
+	if fls.create == nil {
+		return nil
+	}
+	return fls.create(ctx, link)
+}
+func (fls *fakeLinkStore) Retrieve(ctx context.Context, key string) (*short.Link, error) {
+	if fls.retrieve == nil {
+		return nil, nil
+	}
+	return fls.retrieve(ctx, key)
+}
 
 func TestServerHandlers(t *testing.T) {
 
 	type inData struct {
-		handler http.Handler
-		body    string
-		path    string
-		method  string
+		service     *Service
+		handlerName string
+		body        string
+		path        string
+		method      string
 	}
 
 	type outData struct {
@@ -22,18 +46,16 @@ func TestServerHandlers(t *testing.T) {
 		headers http.Header
 	}
 
-	server := &Server{}
-
 	tests := map[string]struct {
 		in  inData
 		out outData
 	}{
 		"health endpoint": {
 			in: inData{
-				handler: HandlerWrapper(server.handlerHealth),
-				body:    "",
-				path:    "/health",
-				method:  http.MethodGet,
+				handlerName: "HandlerHealth",
+				body:        "",
+				path:        "/health",
+				method:      http.MethodGet,
 			},
 			out: outData{
 				status: http.StatusOK,
@@ -45,10 +67,10 @@ func TestServerHandlers(t *testing.T) {
 		},
 		"error endpoint": {
 			in: inData{
-				handler: HandlerWrapper(server.handlerError),
-				body:    "",
-				path:    "/error",
-				method:  http.MethodGet,
+				handlerName: "HandlerError",
+				body:        "",
+				path:        "/error",
+				method:      http.MethodGet,
 			},
 			out: outData{
 				status: http.StatusInternalServerError,
@@ -56,6 +78,42 @@ func TestServerHandlers(t *testing.T) {
 				headers: http.Header{
 					"content-type": []string{"application/json"},
 				},
+			},
+		},
+		"retrieve not found": {
+			in: inData{
+				service: &Service{
+					LinkStore: &fakeLinkStore{
+						retrieve: func(context.Context, string) (*short.Link, error) {
+							return nil, nil
+						},
+					},
+				},
+				handlerName: "HandlerResolve",
+				body:        "",
+				path:        "/r/boo",
+				method:      http.MethodGet,
+			},
+			out: outData{
+				status: http.StatusNotFound,
+			},
+		},
+		"retrieve internal error": {
+			in: inData{
+				service: &Service{
+					LinkStore: &fakeLinkStore{
+						retrieve: func(context.Context, string) (*short.Link, error) {
+							return nil, errors.New("boo")
+						},
+					},
+				},
+				handlerName: "HandlerResolve",
+				body:        "",
+				path:        "/r/boo",
+				method:      http.MethodGet,
+			},
+			out: outData{
+				status: http.StatusInternalServerError,
 			},
 		},
 	}
@@ -69,7 +127,19 @@ func TestServerHandlers(t *testing.T) {
 				strings.NewReader(tt.in.body),
 			)
 			recorder := httptest.NewRecorder()
-			tt.in.handler.ServeHTTP(recorder, request)
+			server := &Server{
+				service: tt.in.service,
+			}
+			handler := HandlerWrapper(
+				func(w http.ResponseWriter, r *http.Request) *AppError {
+					result := reflect.ValueOf(server).MethodByName(tt.in.handlerName).Call([]reflect.Value{
+						reflect.ValueOf(w),
+						reflect.ValueOf(r),
+					})[0].Interface().(*AppError)
+					return result
+				},
+			)
+			handler.ServeHTTP(recorder, request)
 			if got, want := recorder.Code, tt.out.status; got != want {
 				t.Errorf("response status mismatch, got: %d, want: %d", got, want)
 			}

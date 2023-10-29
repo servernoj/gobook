@@ -15,19 +15,19 @@ type Server struct {
 	service *Service
 }
 
-func (s *Server) handlerHealth(w http.ResponseWriter, r *http.Request) *AppError {
+func (s *Server) HandlerHealth(w http.ResponseWriter, r *http.Request) *AppError {
 	w.Write([]byte("OK"))
 	return nil
 }
 
-func (s *Server) handlerError(w http.ResponseWriter, r *http.Request) *AppError {
+func (s *Server) HandlerError(w http.ResponseWriter, r *http.Request) *AppError {
 	return &AppError{
 		fmt.Errorf("test error"),
 		http.StatusInternalServerError,
 	}
 }
 
-func (s *Server) handlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
+func (s *Server) HandlerCreate(w http.ResponseWriter, r *http.Request) *AppError {
 	var link short.Link
 	err := Decode(r.Body, &link)
 	if err != nil {
@@ -73,7 +73,7 @@ func (s *Server) handlerCreate(w http.ResponseWriter, r *http.Request) *AppError
 	return nil
 }
 
-func (s *Server) handlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
+func (s *Server) HandlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
 	key := r.URL.Path[3:]
 	link, err := s.service.LinkStore.Retrieve(r.Context(), key)
 	if err != nil {
@@ -95,19 +95,19 @@ func (s *Server) handlerResolve(w http.ResponseWriter, r *http.Request) *AppErro
 func (s *Server) Init(service *Service) {
 	s.service = service
 	serveMux := http.NewServeMux()
-	serveMux.Handle("/health", HandlerWrapper(s.handlerHealth))
-	serveMux.Handle("/error", HandlerWrapper(s.handlerError))
+	serveMux.Handle("/health", HandlerWrapper(s.HandlerHealth))
+	serveMux.Handle("/error", HandlerWrapper(s.HandlerError))
 	serveMux.Handle(
 		"/short",
 		MiddleWareAllowMethod(
-			HandlerWrapper(s.handlerCreate),
+			HandlerWrapper(s.HandlerCreate),
 			http.MethodPost,
 		),
 	)
 	serveMux.Handle(
 		"/r/",
 		MiddleWareAllowMethod(
-			HandlerWrapper(s.handlerResolve),
+			HandlerWrapper(s.HandlerResolve),
 			http.MethodGet,
 		),
 	)

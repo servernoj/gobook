@@ -7,11 +7,13 @@ import (
 	"github.com/servernoj/gobook/ch07/sqlx"
 )
 
+type LinkStore interface {
+	Create(context.Context, short.Link) error
+	Retrieve(context.Context, string) (*short.Link, error)
+}
+
 type Service struct {
-	LinkStore interface {
-		Create(context.Context, short.Link) error
-		Retrieve(context.Context, string) (*short.Link, error)
-	}
+	LinkStore LinkStore
 }
 
 func NewService(db *sqlx.DB) *Service {
