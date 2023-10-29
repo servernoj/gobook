@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/servernoj/gobook/ch07/short"
 	"github.com/servernoj/gobook/ch07/shortener"
 	"github.com/servernoj/gobook/ch07/sqlx"
 )
@@ -32,7 +31,7 @@ func main() {
 		log.Fatalf("unable to dial DB: %s", err)
 	}
 
-	service := short.NewService(db)
+	service := shortener.NewService(db)
 
 	appServer := shortener.Server{}
 	appServer.Init(service)

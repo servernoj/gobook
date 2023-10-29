@@ -12,7 +12,7 @@ import (
 
 type Server struct {
 	http.Handler
-	service *short.Service
+	service *Service
 }
 
 func (s *Server) handlerHealth(w http.ResponseWriter, r *http.Request) *AppError {
@@ -63,7 +63,7 @@ func (s *Server) handlerCreate(w http.ResponseWriter, r *http.Request) *AppError
 			http.StatusBadRequest,
 		}
 	}
-	if err := s.service.Create(r.Context(), link); err != nil {
+	if err := s.service.LinkStore.Create(r.Context(), link); err != nil {
 		return &AppError{
 			err,
 			http.StatusInternalServerError,
@@ -75,7 +75,7 @@ func (s *Server) handlerCreate(w http.ResponseWriter, r *http.Request) *AppError
 
 func (s *Server) handlerResolve(w http.ResponseWriter, r *http.Request) *AppError {
 	key := r.URL.Path[3:]
-	link, err := s.service.Retrieve(r.Context(), key)
+	link, err := s.service.LinkStore.Retrieve(r.Context(), key)
 	if err != nil {
 		return &AppError{
 			fmt.Errorf("unable to retrieve link record with key %q", key),
@@ -92,7 +92,7 @@ func (s *Server) handlerResolve(w http.ResponseWriter, r *http.Request) *AppErro
 	return nil
 }
 
-func (s *Server) Init(service *short.Service) {
+func (s *Server) Init(service *Service) {
 	s.service = service
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/health", HandlerWrapper(s.handlerHealth))
